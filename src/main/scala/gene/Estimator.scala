@@ -1,13 +1,14 @@
+package gene
+
+import gene.Gene._
 import scala.annotation.tailrec
 
 trait Estimator {
-  type Board
   def isSolution(estimate: Int): Boolean
   def estimate(board: Board): Int
 }
 
 class FirstEstimator extends Estimator {
-  type Board = List[Shape]
 
   def isSolution(estimate: Int): Boolean = estimate == 28
 
