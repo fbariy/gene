@@ -1,9 +1,9 @@
 package gene
 
-import gene.Gene.{Board, Population}
+import gene.Gene.{Individual, Population}
 
 object Selector {
-  def selection(estPop: List[(Board, Int)], rng: RNG): (Population, RNG) = {
+  def selection(estPop: List[(Individual, Int)], rng: RNG): (Population, RNG) = {
     val half = estPop.size / 2
     val betterPop = estPop.sortWith((left, right) => left._2 > right._2).take(half).map(pair => pair._1)
     val restHalf = estPop.size - half

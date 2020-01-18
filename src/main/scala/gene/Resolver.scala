@@ -1,12 +1,12 @@
 package gene
 
-import gene.Gene.{Board, Population}
+import gene.Gene.{Individual, Population}
 
 import scala.annotation.tailrec
 
 object Resolver {
   @tailrec
-  final def resolve(pop: Population, est: Estimator, rng: RNG): Option[Board] = {
+  final def resolve(pop: Population, est: Estimator, rng: RNG): Option[Individual] = {
     val estPop = pop.map(board => (board, est.estimate(board)))
     val solution = estPop.find(pair => est.isSolution(pair._2))
     solution match {
@@ -15,11 +15,10 @@ object Resolver {
         if (false /* todo: add breaker resolve */) None
         else {
           val (selectedPop, newRng) = Selector.selection(estPop, rng)
-
-
+          val (crossoverResult, mapRng) = Gene.crossoverPop(selectedPop, newRng)
           /* todo: add some morphism to population */
 
-          resolve(selectedPop, est, newRng)
+          resolve(crossoverResult, est, mapRng)
         }
     }
   }
