@@ -4,31 +4,29 @@ import gene.Gene._
 import scala.annotation.tailrec
 
 trait Estimator {
-  def isSolution(estimate: Int): Boolean
-  def estimate(board: Individual): Int
+  def isSolution(estimation: Int): Boolean
+  def estimate(individual: Individual): Int
 }
 
 class FirstEstimator extends Estimator {
 
-  def isSolution(estimate: Int): Boolean = estimate == 28
+  def isSolution(estimation: Int): Boolean = estimation == 28
 
-  def estimate(board: Individual): Int = {
+  def estimate(individual: Individual): Int = {
     @tailrec
-    def estimateIter(board: Individual, acc: Int): Int = board match {
+    def estimateIter(individuals: List[(Int, Int)], acc: Int): Int = individuals match {
       case Nil => acc
-      case head :: tail => estimateIter(tail, acc + compute(head, tail))
+      case head :: tail => estimateIter(tail, acc + tail.count(current => !collide(head, current)))
     }
-    estimateIter(board, 0)
+    estimateIter(individual.zipWithIndex, 0)
   }
 
-  private def compute(current: Shape, rest: Individual) = {
-    val operator: (Int, Shape) => Int = (acc, other) => if (collise(current, other)) acc else acc + 1
-    rest.foldLeft(0)(operator)
-  }
+  private def collide(current: (Int, Int), other: (Int, Int)) = {
+    val (currentX, currentY) = current
+    val (otherX, otherY) = other
 
-  private def collise(current: Shape, other: Shape) = {
-    current.x == other.x ||
-      current.y == other.y ||
-      Math.abs(other.x - current.x) == Math.abs(other.y - current.y)
+    currentX == otherX ||
+      currentY == otherY ||
+      Math.abs(otherX - currentX) == Math.abs(otherY - currentY)
   }
 }

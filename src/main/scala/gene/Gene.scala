@@ -1,9 +1,10 @@
 package gene
 
 object Gene {
-  type Individual = List[Shape]
+  type Individual = List[Int]
   type Population = List[Individual]
 
+  //@todo: не правильно работает, позиция гена остается прежней
   def crossoverPop(pop: Population, rng: RNG): (Population, RNG) = {
     def crossover(first: Individual, second: Individual, point: Int): (Individual, Individual) = {
       val (firstLeft, firstRight) = first.splitAt(point)
@@ -24,9 +25,6 @@ object Gene {
       case List() => (List(), rng)
     }
   }
-
-
-
 
   def main(args: Array[String]): Unit = {
     val board = List(
@@ -72,21 +70,15 @@ object Gene {
     )
     // выйгрышная
     val solutionBoard = List(
-      Shape(7, 1),
-      Shape(3, 2),
-      Shape(1, 3),
-      Shape(6, 4),
-      Shape(8, 5),
-      Shape(5, 6),
-      Shape(2, 7),
-      Shape(4, 8)
+      7,
+      3,
+      1,
+      6,
+      8,
+      5,
+      2,
+      4
     )
-
-    val population = List(board, board2, board3, board4)
-    val estimator = new FirstEstimator
-    val initialRng = RNG(1)
-    val result = Resolver.resolve(population, estimator, initialRng)
-    val a = 10
   }
 }
 
