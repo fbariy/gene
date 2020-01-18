@@ -16,7 +16,7 @@ case class RNG(seed: Long) {
   }
 
   def nextBool(): (Boolean, RNG) = nextInt(1) match {
-    case (1, nextRNG) => (true, nextRNG)
-    case (2, nextRNG) => (false, nextRNG)
+    case (1, rng) => (true, rng)
+    case (_, rng) => (false, rng)
   }
 }
