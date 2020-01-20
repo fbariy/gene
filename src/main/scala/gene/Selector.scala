@@ -16,7 +16,7 @@ object Selector {
     if (pop.isEmpty || arbitrarySize == 0) (List(), rng)
     else {
       val (result, currentRng) = getArbitrary(pop, arbitrarySize - 1, rng)
-      val (index, nextRng) = currentRng.nextInt(pop.size - 1)
+      val (index, nextRng) = currentRng.nextIntLessThen(pop.size - 1)
       (pop(index) :: result, nextRng)
     }
 }
