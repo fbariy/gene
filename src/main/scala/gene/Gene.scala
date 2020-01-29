@@ -17,13 +17,35 @@ object Gene {
     // выйгрышная
     val solutionBoard = List(7, 3, 1, 6, 8, 5, 2, 4)
 
-    val pop = List(board1, board2, board3, board4)
-    val est = new FirstEstimator
+    val population = List(board1, board2, board3, board4)
+    val estimator = new FirstEstimator
     val rng = RNG(0)
     val crossover = Mutator.crossover _
     val mutation = Mutator.firstTaskMutation
 
-    val result = Resolver.resolve(pop,  est, rng)
+    val mutator = crossover
+
+    val result = Resolver.resolve(population, mutator, estimator, rng)
     val a = 1
   }
 }
+
+/**
+  * Подзадачи:
+  *
+  * 1 Мутаторы
+  * [1.1] Плохая читаемость из-за RNG
+  * [1.2] Принимает пару вместо нескольких аргументов
+  * 1.3 Общий рефакторинг
+  * [1.4] Покрытие тестами
+  *
+  * 2 Прерыватель ризолвера
+  *
+  * 3 Генератор первой популяции
+  *
+  * 4 Статистика поиска решения
+  *
+  * 5 Визуализация результата
+  *
+  * 6 Задание по варианту
+  */

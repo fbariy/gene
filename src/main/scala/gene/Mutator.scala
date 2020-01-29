@@ -9,34 +9,51 @@ object Mutator {
     (firstLeft ++ secondRight, secondLeft ++ firstRight)
   }
 
-  def crossover(rng: RNG)(pop: Population): (Population, RNG) = {
-    pop match {
-      case List() => List() -> rng
-      case first :: _ => List(first) -> rng
-      case first :: second :: rest =>
-        val (number, nextRng) = rng.nextIntLessThen(first.size)
-        val (left, right) = crossover(first, second, number)
-        val (resultPop, resultRng) = crossover(nextRng)(rest)
-        val newPop = List(left, right) ++ resultPop
-        (newPop, resultRng)
-    }
+  def crossover(pair: (Population, RNG)): (Population, RNG) = pair match {
+    case (pop, rng) =>
+      if (0 == pop.size % 2) crossoverSlider(pop, rng)
+      else {
+        val (newPop, newRNG) = crossoverSlider(pop.init, rng)
+        (newPop :+ pop.last, newRNG)
+      }
   }
 
-  def mutation(minGene: Int, maxGene: Int)(rng: RNG)(pop: Population) = {
-    def mutationIter(rng: RNG)(pop: Population): (Population, RNG) = pop match {
-      case List() => List() -> rng
-      case first :: rest =>
-        //@todo: refactor
-        val mutatedIndividual = rng.nextBool() match {
-          case (false, switchRNG) => (first, switchRNG)
-          case (true, switchRNG) =>
-            val (newIndividual, mutateRNG) = mutate(minGene, maxGene)(switchRNG, first)
-            (newIndividual, mutateRNG)
-        }
+  def crossoverSlider(pop: Population, rng: RNG): (Population, RNG) = pop.sliding(2).flatMap()
 
-        val (mutated, mutateRNG) = mutatedIndividual
-        val (newPop, mutatePopRNG) = mutationIter(mutateRNG)(rest)
-        (mutated :: newPop, mutatePopRNG)
+  def crossoverIter
+
+//  def crossover(pair: (Population, RNG)): (Population, RNG) = {
+//    val (pop, rng) = pair
+//    pop match {
+//      case first :: second :: rest =>
+//        val (number, nextRng) = rng.nextIntLessThen(first.size)
+//        val (left, right) = crossover(first, second, number)
+//        val (resultPop, resultRng) = crossover((rest, nextRng))
+//        val newPop = List(left, right) ++ resultPop
+//        (newPop, resultRng)
+//      case first :: _ => (List(first), rng)
+//      case List() => (List(), rng)
+//    }
+//  }
+
+  def mutation(minGene: Int, maxGene: Int)(pair: (Population, RNG)) = {
+    def mutationIter(pair: (Population, RNG)): (Population, RNG) = {
+      val (pop, rng) = pair
+      pop match {
+        case List() => (List(),  rng)
+        case first :: rest =>
+          //@todo: refactor
+          val mutatedIndividual = rng.nextBool() match {
+            case (false, switchRNG) => (first, switchRNG)
+            case (true, switchRNG) =>
+              val (newIndividual, mutateRNG) = mutate(minGene, maxGene)(switchRNG, first)
+              (newIndividual, mutateRNG)
+          }
+
+          val (mutated, mutateRNG) = mutatedIndividual
+          val (newPop, mutatePopRNG) = mutationIter((rest, mutateRNG))
+          (mutated :: newPop, mutatePopRNG)
+      }
     }
 
     def mutate(minGene: Int, maxGen: Int)(rng: RNG, individual: Individual): (Individual, RNG) = {
@@ -45,8 +62,8 @@ object Mutator {
       (individual.updated(point, gene), geneRNG)
     }
 
-    mutationIter(rng)(pop)
+    mutationIter(pair)
   }
 
-  def firstTaskMutation = mutation(1, 8)
+  def firstTaskMutation: ((Population, RNG)) => (Population, RNG) = mutation(1, 8)
 }
