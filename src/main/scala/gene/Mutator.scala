@@ -20,8 +20,6 @@ object Mutator {
 
   def crossoverSlider(pop: Population, rng: RNG): (Population, RNG) = pop.sliding(2).flatMap()
 
-  def crossoverIter
-
 //  def crossover(pair: (Population, RNG)): (Population, RNG) = {
 //    val (pop, rng) = pair
 //    pop match {

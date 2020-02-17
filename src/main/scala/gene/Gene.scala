@@ -8,6 +8,16 @@ object Gene {
     start()
   }
 
+  def randArgs(max: Int, min: Int)(n: Int): State[Long, List[(Boolean, Int)]] =
+    State.sequence(List.fill(n)(State.both(RNG2.bool, RNG2.int(max, min))))
+
+  def mutation(maxGene: Int, minGene: Int)(population: Population)/*: State[Long, Population]*/ = for {
+    args <- randArgs(maxGene, minGene)(population.length)
+  } yield ???
+
+  def mutationIndividual(isNeedMutate: Boolean, gene: Int)(individual: Individual): Individual =
+    ???
+
   def start(): Unit = {
     val board1 = List(7, 4, 1, 7, 8, 4, 2, 4)
     val board2 = List(7, 6, 1, 3, 8, 1, 8, 4)
