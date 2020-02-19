@@ -5,7 +5,7 @@ object RNG2 {
     State(seed => {
       val newSeed = (seed * 0x5DDEECE66DL + 0xBL) & 0xFFFFFFFFFFFFL
       val n = newSeed >>> 16
-      (seed, n.toInt)
+      (newSeed, n.toInt)
     })
 
   def double: State[Long, Double] =
@@ -20,4 +20,7 @@ object RNG2 {
       // borrowed from https://javarush.ru/groups/posts/1256-generacija-sluchaynogo-chisla-v-zadannom-diapazone
       (a * (max - min + 1) + min).toInt
     }
+
+  def lessThan(lessThan: Int, min: Int = 0): State[Long, Int] =
+    int(if (lessThan - 1 <= min) lessThan else lessThan - 1, min)
 }
