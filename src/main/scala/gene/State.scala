@@ -20,8 +20,6 @@ case class State[S, A](run: S => (S, A)) {
 }
 
 object State {
-  def apply[S, A](run: S => (S, A)): State[S, A] = new State(run)
-
   def unit[S, A](a: A): State[S, A] =
     State { s => (s, a) }
 
