@@ -12,8 +12,22 @@ object Gene {
     val solutionBoard = List(7, 3, 1, 6, 8, 5, 2, 4)
   }
 
+  def crossoverIndividual(maxGene: Int, minGene: Int)(left: Individual, right: Individual): State[Long, Population] =
+    int(maxGene, minGene).map { point =>
+      val (leftLeft, leftRight) = left.splitAt(point)
+      val (rightLeft, rightRight) = right.splitAt(point)
+      List(leftLeft ++ rightRight, rightLeft ++ leftRight)
+    }
+
+  def crossover(maxGene: Int, minGene: Int)(population: Population): State[Long, Population] =
+    sequence(population
+      .sliding(2)
+      .map { pair => crossoverIndividual(maxGene, minGene)(pair.head, pair.last) }
+      .toList)
+      .map(_.flatten)
+
   def mutation(maxGene: Int, minGene: Int)(population: Population): State[Long, Population] =
-    sequence(population.map(individual => mutationIndividual(maxGene, minGene)(individual)))
+    sequence(population.map { individual => mutationIndividual(maxGene, minGene)(individual) })
 
   def mutationIndividual(maxGene: Int, minGene: Int)(individual: Individual): State[Long, Individual] = for {
     isNeedMutate <- bool
