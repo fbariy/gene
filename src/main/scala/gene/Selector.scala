@@ -2,6 +2,8 @@ package gene
 
 import gene.Gene.{Individual, Population}
 
+import scala.annotation.tailrec
+
 object Selector {
   def selection (estPop: List[(Individual, Int)], rng: RNG): (Population, RNG) = {
     val half = estPop.size / 2
@@ -11,9 +13,19 @@ object Selector {
     (betterPop ++ arbitraryPop, newRng)
   }
 
+  def selection(estimator: Estimator)(population: Population): State[Long, Population] = {
+    val estimationPopulation = population.zip { population.map(estimator.estimate) }
+    val half = estimationPopulation.size / 2
+    val betterPop = estimationPopulation.sortWith((left, right) => left._2 > right._2).take(half).map(pair => pair._1)
+    val restHalf = estimationPopulation.size - half
+    val (arbitraryPop, newRng) = getArbitrary(population, restHalf)
+    (betterPop ++ arbitraryPop, newRng)
+    ???
+  }
+
+
   def getArbitrary(population: Population, arbitratySize: Int): State[Long, Population] = ???
 
-  //@todo: fix seed in RNG
   def getArbitrary(population: Population, arbitrarySize: Int, rng: RNG): (Population, RNG) =
     if (population.isEmpty || arbitrarySize == 0) (List(), rng)
     else {
