@@ -24,26 +24,26 @@ object Gene {
     val population = List(board1, board2, board3, board4, board5)
     val estimator = new FirstEstimator
 
-    val result = resolver(1, population, estimator)
+    val result = resolve(1, population, estimator)
   }
 
-  def crossoverIndividual(maxGene: Int, minGene: Int)(left: Individual, right: Individual): State[Long, Population] =
-    int(maxGene, minGene).map { point =>
+  def crossover(population: Population): State[Long, Population] =
+    sequence(population
+      .sliding(2, 2)
+      .map { pair => crossoverIndividual(pair.head, pair.last) }
+      .toList)
+      .map(_.flatten)
+
+  def crossoverIndividual(left: Individual, right: Individual): State[Long, Population] =
+    lessThan(left.size).map { point =>
       val (leftLeft, leftRight) = left.splitAt(point)
       val (rightLeft, rightRight) = right.splitAt(point)
       List(leftLeft ++ rightRight, rightLeft ++ leftRight)
     }
 
-  def crossover(maxGene: Int, minGene: Int)(population: Population): State[Long, Population] =
-    sequence(population
-      .sliding(2, 2)
-      .map { pair => crossoverIndividual(maxGene, minGene)(pair.head, pair.last) }
-      .toList)
-      .map(_.flatten)
-
 
   def mutation(maxGene: Int, minGene: Int)(population: Population): State[Long, Population] =
-    sequence(population.map { individual => mutationIndividual(maxGene, minGene)(individual) })
+    sequence(population map { mutationIndividual(maxGene, minGene)(_) })
 
   def mutationIndividual(maxGene: Int, minGene: Int)(individual: Individual): State[Long, Individual] =
     for {
@@ -56,34 +56,33 @@ object Gene {
 
 
   def selection(estimator: Estimator)(population: Population): State[Long, PopulationEstimation] = {
-    val estimated = population.zip { population.map(estimator.estimate) }
-    val half = estimated.size / 2
+    val estimated = estimator.estimate(population)
+
     val selected = estimated
       .sortWith((current, next) => current._2 > next._2)
-      .take(half)
+      .take(estimated.size / 2)
 
-    getArbitrary(estimated.size - half)(population)
-      .map(_.map(individual => (individual, estimator.estimate(individual))))
+    chooseArbitraryIndividuals(estimated.size - selected.size)(population)
+      .map(estimator.estimate)
       .map(selected ++ _)
   }
 
 
-  def getArbitrary(individualSize: Int)(population: Population): State[Long, Population] =
-    sequence(List.fill(individualSize)(lessThan(population.size).map(population(_))))
+  def chooseArbitraryIndividuals(individualsCount: Int)(population: Population): State[Long, Population] =
+    sequence(List.fill(individualsCount)(lessThan(population.size).map(population(_))))
 
   //@todo: replace
   def mutationFirst: Population => State[Long, Population] = mutation(8, 1)
-  def crossoverFirst: Population => State[Long, Population] = crossover(8, 1)
 
   @tailrec
-  def resolver(seed: Long, population: Population, estimator: Estimator): Individual = {
+  def resolve(seed: Long, population: Population, estimator: Estimator): Individual = {
     val (nextSeed, result) = mutator(population, estimator).run(seed)
-    val maybeSolution = result.find(individual => estimator.isSolution(individual._2))
+    val maybeSolution = result.find(estimator.isSolution)
 
     //@todo: add statistic for every iteration
 
     maybeSolution match {
-      case None => resolver(nextSeed, result.map(_._1), estimator)
+      case None => resolve(nextSeed, result.map(_._1), estimator)
       case Some((solution, _)) => solution
     }
   }
@@ -91,7 +90,7 @@ object Gene {
   def mutator(population: Population, estimator: Estimator): State[Long, PopulationEstimation] =
     for {
       mutationResult <- mutationFirst(population)
-      crossoverResult <- crossoverFirst(mutationResult)
+      crossoverResult <- crossover(mutationResult)
       selectionResult <- selection(estimator)(crossoverResult)
     } yield selectionResult
 }
