@@ -1,6 +1,6 @@
 package gene
 
-object RNG2 {
+object RNG {
   def int: State[Long, Int] =
     State(seed => {
       val newSeed = (seed * 0x5DDEECE66DL + 0xBL) & 0xFFFFFFFFFFFFL
