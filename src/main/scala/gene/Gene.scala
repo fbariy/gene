@@ -5,6 +5,29 @@ import State._
 
 import scala.annotation.tailrec
 
+/*
+ * * кроссовер возвращает не популяцию а новую особь на основе двух
+ *
+ *
+ * на каждой итерации нахожим среднее арифм. генотипа популяции
+ *
+ * если среднее < 24 то динам. путь:
+ * - проходим по всей популяции
+ * - выбираем случайным образом 4 особи
+ * - из них еще 2 с максимальной оценкой
+ * - делаем двойной кроссовер выбранных 2-х (если особь 5 генов, то генерим от 1 до 4)
+ * - делаем полную мутацию (шанс мутации - 1 к 10)
+ * - резельтирующая особь есть результат итерации по популяции
+ *
+ * иначе:
+ * - сортируем популяцию по убыванию
+ * - проходим по популяции с шагом 2
+ * - делаем кроссовер пары
+ * - делаем мутацию результирующей особи кроссовера (вероятность 1 к 15)
+ * - таким образом получаем 2 особи потомка
+ * - дальше сравниваем 2 особи родителей и потомков, кто больше тот и остается в популяции
+ */
+
 object Gene {
   type Individual = List[Int]
   type Population = List[Individual]
@@ -21,10 +44,27 @@ object Gene {
     val board4 = List(7, 2, 1, 6, 8, 2, 1, 1)
     val board5 = List(7, 4, 1, 7, 8, 4, 2, 4)
 
-    val population = List(board1, board2, board3, board4, board5)
+    val population = List(
+      board1,
+      board2,
+      board3,
+      board4,
+      board1,
+      board2,
+      board3,
+      board4,
+      board1,
+      board2,
+      board3,
+      board4,
+      board1,
+      board2,
+      board3,
+      board4,
+    )
     val estimator = new FirstEstimator
 
-    val result = resolve(8, 1)(population, estimator)(-10000000, 1000000)
+    val result = resolve(8, 1)(population, estimator)(0, 10000000)
     val temp = 10
   }
 
