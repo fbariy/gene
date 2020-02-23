@@ -24,7 +24,8 @@ object Gene {
     val population = List(board1, board2, board3, board4, board5)
     val estimator = new FirstEstimator
 
-    val result = resolve(1, population, estimator)
+    val result = resolve(8, 1)(population, estimator)(-10000000, 1000000)
+    val temp = 10
   }
 
   def crossover(population: Population): State[Long, Population] =
@@ -67,50 +68,34 @@ object Gene {
       .map(selected ++ _)
   }
 
-
   def chooseArbitraryIndividuals(individualsCount: Int)(population: Population): State[Long, Population] =
     sequence(List.fill(individualsCount)(lessThan(population.size).map(population(_))))
 
-  //@todo: replace
-  def mutationFirst: Population => State[Long, Population] = mutation(8, 1)
+  case class Result(solution: Option[Individual], iteration: Int, seed: Long)
+
+  def resolve(maxGene: Int, minGene: Int)
+             (population: Population, estimator: Estimator)
+             (seed: Long, maxIter: Int): Result =
+    resolveIter(population, estimator, maxIter, Result(None, 0, seed))(mutator(maxGene, minGene)(estimator))
 
   @tailrec
-  def resolve(seed: Long, population: Population, estimator: Estimator): Individual = {
-    val (nextSeed, result) = mutator(population, estimator).run(seed)
-    val maybeSolution = result.find(estimator.isSolution)
+  def resolveIter(population: Population, estimator: Estimator, maxIter: Int, accum: Result)
+                 (mutator: Population => State[Long, PopulationEstimation]): Result = {
+    if (maxIter <= 0) accum
+    else {
+      val (nextSeed, result) = mutator(population).run(accum.seed)
 
-    //@todo: add statistic for every iteration
-
-    maybeSolution match {
-      case None => resolve(nextSeed, result.map(_._1), estimator)
-      case Some((solution, _)) => solution
+      result.find(estimator.isSolution) match {
+        case None => resolveIter(population, estimator, maxIter - 1, Result(None, accum.iteration + 1, nextSeed))(mutator)
+        case Some((solution, _)) => Result(Some(solution), accum.iteration, nextSeed)
+      }
     }
   }
 
-  def mutator(population: Population, estimator: Estimator): State[Long, PopulationEstimation] =
+  def mutator(maxGene: Int, minGene: Int)(estimator: Estimator)(population: Population): State[Long, PopulationEstimation] =
     for {
-      mutationResult <- mutationFirst(population)
+      mutationResult <- mutation(maxGene, minGene)(population)
       crossoverResult <- crossover(mutationResult)
       selectionResult <- selection(estimator)(crossoverResult)
     } yield selectionResult
 }
-
-/**
-  * Подзадачи:
-  *
-  * 1 Мутаторы
-  * [1.1] Плохая читаемость из-за RNG
-  * [1.2] Принимает пару вместо нескольких аргументов
-  * 1.3 Общий рефакторинг
-  * [1.4] Покрытие тестами
-  *
-  * 2 Прерыватель ризолвера
-  *
-  * 3 Генератор первой популяции
-  *
-  * 4 Статистика поиска решения
-  *
-  * 5 Визуализация результата
-  *
-  * 6 Задание по варианту
-  */
