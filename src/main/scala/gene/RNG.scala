@@ -9,16 +9,26 @@ object RNG {
     })
 
   def double: State[Long, Double] =
-    int.map { a =>
-      (if (a == Int.MaxValue) a - 1 else a).toDouble.abs / Int.MaxValue
+    int.map { a => (if (a == Int.MaxValue) a - 1 else a).toDouble.abs / Int.MaxValue }
+
+  def bool(trueChance: Int = 2): State[Long, Boolean] =
+    int(trueChance, 1).map(_ == 1)
+
+  def nonNegative: State[Long, Int] =
+    int.map { a => (if (a == Int.MinValue) a + 1 else a).abs }
+
+  def nonNegative(n: Int): State[Long, Int] =
+    nonNegative.flatMap { a =>
+      val mod = a % n
+      if (a + n - mod >= 0) State.unit(mod)
+      else nonNegative(n)
     }
 
-  def bool: State[Long, Boolean] = int.map(_ > 0)
-
   def int(max: Int, min: Int = 0): State[Long, Int] =
-    double.map { a =>
-      // borrowed from https://javarush.ru/groups/posts/1256-generacija-sluchaynogo-chisla-v-zadannom-diapazone
-      (a * (max - min + 1) + min).toInt
+    nonNegative(max).flatMap { a =>
+      val result = a + min
+      if (result <= max) State.unit(result)
+      else int(max, min)
     }
 
   def lessThan(lessThan: Int, min: Int = 0): State[Long, Int] =

@@ -5,137 +5,164 @@ import State._
 
 import scala.annotation.tailrec
 
-/*
- * * кроссовер возвращает не популяцию а новую особь на основе двух
- *
- *
- * на каждой итерации нахожим среднее арифм. генотипа популяции
- *
- * если среднее < 24 то динам. путь:
- * - проходим по всей популяции
- * - выбираем случайным образом 4 особи
- * - из них еще 2 с максимальной оценкой
- * - делаем двойной кроссовер выбранных 2-х (если особь 5 генов, то генерим от 1 до 4)
- * - делаем полную мутацию (шанс мутации - 1 к 10)
- * - резельтирующая особь есть результат итерации по популяции
- *
- * иначе:
- * - сортируем популяцию по убыванию
- * - проходим по популяции с шагом 2
- * - делаем кроссовер пары
- * - делаем мутацию результирующей особи кроссовера (вероятность 1 к 15)
- * - таким образом получаем 2 особи потомка
- * - дальше сравниваем 2 особи родителей и потомков, кто больше тот и остается в популяции
- */
-
 object Gene {
   type Individual = List[Int]
   type Population = List[Individual]
   type Estimation = (Individual, Int)
   type PopulationEstimation = List[Estimation]
 
+
+  def conservativeMutatorPopulation(maxGene: Int, minGene: Int)
+                                   (estimator: Estimator)
+                                   (population: PopulationEstimation): State[Long, Population] =
+    sequence(population
+      .sortWith((current, next) => current._2 > next._2)
+      .map(_._1)
+      .sliding(2, 2)
+      .map { conservativeMutator(maxGene, minGene)(estimator, _) }
+      .toList)
+      .map(_.flatten)
+
+
+  def conservativeMutator(maxGene: Int, minGene: Int)
+                         (estimator: Estimator, population: Population): State[Long, Population] =
+    for {
+      crossoverFirstChild <- crossover(population.head, population.last)
+      mutationFirstChild <- mutation(maxGene, minGene)(15)(crossoverFirstChild)
+      crossoverSecondChild <- crossover(population.head, population.last)
+      mutationSecondChild <- mutation(maxGene, minGene)(15)(crossoverSecondChild)
+
+      childPopulation = List(mutationFirstChild, mutationSecondChild)
+      parentPopulation = List(population.head, population.last)
+    } yield
+      if (estimator.estimateAverage(childPopulation) > estimator.estimateAverage(parentPopulation)) childPopulation
+      else parentPopulation
+
+  def dynamicMutator(maxGene: Int, minGene: Int)
+                    (estimator: Estimator, population: Population): State[Long, Individual] =
+    for {
+      slice <- chooseArbitraryIndividuals(4)(population)
+      maxPair = estimator
+        .estimate(slice)
+        .sortWith((current, next) => current._2 > next._2)
+        .take(slice.size / 2)
+        .map(_._1)
+      crossover <- crossoverTwice(maxPair.head, maxPair.last)
+      mutation <- mutation(maxGene, minGene)(10)(crossover)
+    } yield mutation
+
+  def dynamicMutatorPopulation(maxGene: Int, minGene: Int)(estimator: Estimator)(population: Population): State[Long, List[Individual]] =
+    sequence(List.fill(population.size)(dynamicMutator(maxGene, minGene)(estimator, population)))
+
   def main(args: Array[String]): Unit = {
     // выйгрышная
     val solutionBoard = List(7, 3, 1, 6, 8, 5, 2, 4)
 
     val board1 = List(7, 4, 1, 7, 8, 4, 2, 4)
-    val board2 = List(7, 6, 1, 3, 8, 1, 8, 4)
-    val board3 = List(7, 2, 1, 3, 1, 1, 8, 1)
-    val board4 = List(7, 2, 1, 6, 8, 2, 1, 1)
-    val board5 = List(7, 4, 1, 7, 8, 4, 2, 4)
+    val board2 = List(9, 6, 1, 3, 8, 1, 8, 4)
+    val board3 = List(3, 2, 1, 3, 1, 1, 8, 1)
+    val board4 = List(2, 2, 1, 6, 8, 2, 1, 1)
+    val board5 = List(8, 4, 1, 7, 8, 4, 2, 4)
 
     val population = List(
       board1,
       board2,
       board3,
       board4,
+      board5,
       board1,
       board2,
       board3,
       board4,
+      board5,
       board1,
       board2,
       board3,
       board4,
+      board5,
       board1,
       board2,
       board3,
       board4,
+      board5,
+      board1,
+      board2,
+      board3,
+      board4,
+      board5,
     )
     val estimator = new FirstEstimator
 
-    val result = resolve(8, 1)(population, estimator)(0, 10000000)
+    // solution seed: 4
+    val result = resolve(8, 1, 24)(population, estimator)(4, 500000)
+
     val temp = 10
   }
 
-  def crossover(population: Population): State[Long, Population] =
-    sequence(population
-      .sliding(2, 2)
-      .map { pair => crossoverIndividual(pair.head, pair.last) }
-      .toList)
-      .map(_.flatten)
 
-  def crossoverIndividual(left: Individual, right: Individual): State[Long, Population] =
-    lessThan(left.size).map { point =>
-      val (leftLeft, leftRight) = left.splitAt(point)
-      val (rightLeft, rightRight) = right.splitAt(point)
-      List(leftLeft ++ rightRight, rightLeft ++ leftRight)
-    }
+  def crossover(left: Individual, right: Individual): State[Long, Individual] =
+    lessThan(left.size - 1, 1).map(point => right.splitAt(point)._1 ++ left.splitAt(point)._2)
 
-
-  def mutation(maxGene: Int, minGene: Int)(population: Population): State[Long, Population] =
-    sequence(population map { mutationIndividual(maxGene, minGene)(_) })
-
-  def mutationIndividual(maxGene: Int, minGene: Int)(individual: Individual): State[Long, Individual] =
+  def crossoverTwice(left: Individual, right: Individual): State[Long, Individual] =
     for {
-      isNeedMutate <- bool
+      once <- crossover(left, right)
+      twice <- crossover(right, once)
+    } yield twice
+
+  def mutation(maxGene: Int, minGene: Int)(chanceMutation: Int)(individual: Individual): State[Long, Individual] =
+    for {
+      isNeedMutate <- bool(chanceMutation)
       gene <- int(maxGene, minGene)
       position <- lessThan(individual.size)
     } yield
       if (isNeedMutate) individual.updated(position, gene)
       else individual
 
-
-  def selection(estimator: Estimator)(population: Population): State[Long, PopulationEstimation] = {
-    val estimated = estimator.estimate(population)
-
-    val selected = estimated
-      .sortWith((current, next) => current._2 > next._2)
-      .take(estimated.size / 2)
-
-    chooseArbitraryIndividuals(estimated.size - selected.size)(population)
-      .map(estimator.estimate)
-      .map(selected ++ _)
-  }
-
   def chooseArbitraryIndividuals(individualsCount: Int)(population: Population): State[Long, Population] =
-    sequence(List.fill(individualsCount)(lessThan(population.size).map(population(_))))
+    sequence(List.fill(individualsCount)(lessThan(population.size).map { population(_) }))
 
   case class Result(solution: Option[Individual], iteration: Int, seed: Long)
 
-  def resolve(maxGene: Int, minGene: Int)
+  def resolve(maxGene: Int, minGene: Int, average: Int)
              (population: Population, estimator: Estimator)
              (seed: Long, maxIter: Int): Result =
-    resolveIter(population, estimator, maxIter, Result(None, 0, seed))(mutator(maxGene, minGene)(estimator))
+    resolveIter(
+      dynamicMutatorPopulation(maxGene, minGene)(estimator),
+      conservativeMutatorPopulation(maxGene, minGene)(estimator)
+    )(
+      population,
+      estimator,
+      average)(
+      maxIter,
+      Result(None, 0, seed)
+    )
 
   @tailrec
-  def resolveIter(population: Population, estimator: Estimator, maxIter: Int, accum: Result)
-                 (mutator: Population => State[Long, PopulationEstimation]): Result = {
+  def resolveIter(dynamic: Population => State[Long, Population], conservative: PopulationEstimation => State[Long, Population])
+                 (population: Population, estimator: Estimator, average: Int)
+                 (maxIter: Int, accum: Result): Result = {
+    // too much attempts
     if (maxIter <= 0) accum
     else {
-      val (nextSeed, result) = mutator(population).run(accum.seed)
+      val estimated = estimator.estimate(population)
+      val solution = estimated.find(estimator.isSolution)
 
-      result.find(estimator.isSolution) match {
-        case None => resolveIter(population, estimator, maxIter - 1, Result(None, accum.iteration + 1, nextSeed))(mutator)
-        case Some((solution, _)) => Result(Some(solution), accum.iteration, nextSeed)
+      solution match {
+        // solution is found
+        case Some((solution, _)) => Result(Some(solution), accum.iteration, accum.seed)
+        // solution not found
+        case None =>
+            // choose mutation strategy
+            if (estimator.estimationAverage(estimated) < average) {
+              val (nextSeed, nextPopulation) = dynamic(population).run(accum.seed)
+              resolveIter(dynamic, conservative)(nextPopulation, estimator, average)(maxIter - 1, Result(None, accum.iteration + 1, nextSeed))
+            }
+
+            else {
+              val (nextSeed, nextPopulation) = conservative(estimated).run(accum.seed)
+              resolveIter(dynamic, conservative)(nextPopulation, estimator, average)(maxIter - 1, Result(None, accum.iteration + 1, nextSeed))
+            }
       }
     }
   }
-
-  def mutator(maxGene: Int, minGene: Int)(estimator: Estimator)(population: Population): State[Long, PopulationEstimation] =
-    for {
-      mutationResult <- mutation(maxGene, minGene)(population)
-      crossoverResult <- crossover(mutationResult)
-      selectionResult <- selection(estimator)(crossoverResult)
-    } yield selectionResult
 }

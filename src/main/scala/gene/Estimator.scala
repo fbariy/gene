@@ -11,6 +11,10 @@ trait Estimator {
   def estimate(individual: Individual): Int
 
   def estimate(population: Population): PopulationEstimation = population zip ( population map estimate )
+
+  def estimateAverage(population: Population): Int = population.foldLeft(0)(_ + estimate(_)) / population.size
+
+  def estimationAverage(estimation: PopulationEstimation): Int = estimation.foldLeft(0)(_ + _._2) / estimation.size
 }
 
   class FirstEstimator extends Estimator {
