@@ -2,7 +2,9 @@ package gene
 
 import RNG._
 import State._
+import Generator._
 
+import scala.io.StdIn.readLine
 import scala.annotation.tailrec
 
 object Gene {
@@ -10,6 +12,35 @@ object Gene {
   type Population = List[Individual]
   type Estimation = (Individual, Int)
   type PopulationEstimation = List[Estimation]
+
+  case class Result(solution: Option[Individual], iteration: Int, seed: Long)
+
+  def main(args: Array[String]): Unit = {
+    print("Hi. Enter the population size: ")
+    val populationSize = readLine().toInt
+
+    print("Enter the n: ")
+    val n = readLine().toInt
+
+    print("Enter the max iteration amount: ")
+    val maxIter = readLine().toInt
+
+    print("Enter the seed: ")
+    val seed = readLine().toInt
+
+    val est = new NRookEstimator(n)
+    val gen = generator(populationSize)(n, 1)(n)
+
+    val result = resolve(n, 1, 24)(est, gen)(seed, maxIter)
+
+    println(s"\nIteration amount: ${result.iteration}")
+    println(s"Final seed: ${result.seed}")
+
+    result.solution match {
+      case Some(individual) => println(s"Solution individual: " + individual)
+      case None => println(s"Solution not found, retry with other seed or add max iteration amount")
+    }
+  }
 
 
   def conservativeMutatorPopulation(maxGene: Int, minGene: Int)
@@ -22,7 +53,6 @@ object Gene {
       .map { conservativeMutator(maxGene, minGene)(estimator, _) }
       .toList)
       .map(_.flatten)
-
 
   def conservativeMutator(maxGene: Int, minGene: Int)
                          (estimator: Estimator, population: Population): State[Long, Population] =
@@ -54,52 +84,6 @@ object Gene {
   def dynamicMutatorPopulation(maxGene: Int, minGene: Int)(estimator: Estimator)(population: Population): State[Long, List[Individual]] =
     sequence(List.fill(population.size)(dynamicMutator(maxGene, minGene)(estimator, population)))
 
-  def main(args: Array[String]): Unit = {
-    // выйгрышная
-    val solutionBoard = List(7, 3, 1, 6, 8, 5, 2, 4)
-
-    val board1 = List(7, 4, 1, 7, 8, 4, 2, 4)
-    val board2 = List(9, 6, 1, 3, 8, 1, 8, 4)
-    val board3 = List(3, 2, 1, 3, 1, 1, 8, 1)
-    val board4 = List(2, 2, 1, 6, 8, 2, 1, 1)
-    val board5 = List(8, 4, 1, 7, 8, 4, 2, 4)
-
-    val population = List(
-      board1,
-      board2,
-      board3,
-      board4,
-      board5,
-      board1,
-      board2,
-      board3,
-      board4,
-      board5,
-      board1,
-      board2,
-      board3,
-      board4,
-      board5,
-      board1,
-      board2,
-      board3,
-      board4,
-      board5,
-      board1,
-      board2,
-      board3,
-      board4,
-      board5,
-    )
-    val estimator = new FirstEstimator
-
-    // solution seed: 4
-    val result = resolve(8, 1, 24)(population, estimator)(4, 500000)
-
-    val temp = 10
-  }
-
-
   def crossover(left: Individual, right: Individual): State[Long, Individual] =
     lessThan(left.size - 1, 1).map(point => right.splitAt(point)._1 ++ left.splitAt(point)._2)
 
@@ -121,21 +105,18 @@ object Gene {
   def chooseArbitraryIndividuals(individualsCount: Int)(population: Population): State[Long, Population] =
     sequence(List.fill(individualsCount)(lessThan(population.size).map { population(_) }))
 
-  case class Result(solution: Option[Individual], iteration: Int, seed: Long)
 
   def resolve(maxGene: Int, minGene: Int, average: Int)
-             (population: Population, estimator: Estimator)
-             (seed: Long, maxIter: Int): Result =
+             (estimator: Estimator, generator: State[Long, Population])
+             (seed: Long, maxIter: Int): Result = {
+    val (nextSeed, population) = generator.run(seed)
+
     resolveIter(
       dynamicMutatorPopulation(maxGene, minGene)(estimator),
       conservativeMutatorPopulation(maxGene, minGene)(estimator)
-    )(
-      population,
-      estimator,
-      average)(
-      maxIter,
-      Result(None, 0, seed)
-    )
+    )(population, estimator, average)(maxIter, Result(None, 0, nextSeed))
+  }
+
 
   @tailrec
   def resolveIter(dynamic: Population => State[Long, Population], conservative: PopulationEstimation => State[Long, Population])

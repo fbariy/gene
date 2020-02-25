@@ -31,6 +31,9 @@ object RNG {
       else int(max, min)
     }
 
+  def ints(n: Int)(max: Int, min: Int = 0): State[Long, List[Int]] =
+    State.sequence(List.fill(n)(int(max, min)))
+
   def lessThan(lessThan: Int, min: Int = 0): State[Long, Int] =
     int(if (lessThan - 1 <= min) lessThan else lessThan - 1, min)
 }
